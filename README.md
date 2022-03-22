@@ -10,6 +10,7 @@ Features:
 - Abortable task
 - Task with result
 - Shelled periodic task
+- Dockerized and "Composed"
 
 ### install
 
