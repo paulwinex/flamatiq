@@ -1,5 +1,5 @@
 from dramatiq_abort.middleware import AbortMode
-from flask import Flask
+from flask import Flask, redirect
 from dramatiq.results import Results, errors
 from dramatiq.brokers.redis import RedisBroker
 from dramatiq.results.backends import RedisBackend
@@ -32,6 +32,10 @@ dq = Dramatiq(app, middleware=middlewares)
 
 
 # TASKS
+@dq.actor()
+def simple_tasks():
+    print(f'{">"*10} Simple task executed!')
+
 
 @dq.actor(periodic=cron('* * * * *'))
 def daily_tasks():
@@ -67,10 +71,18 @@ index_link = '<a href="/">Index</a><br><br>'
 
 @app.route("/")
 def index():
-    return index_link+'<a href="/start">Start long task</a> <br> <a href="/compute">Start task with result</a>'
+    return index_link+'<a href="/start">Start simple task</a> <br> '\
+                      '<a href="/start_long">Start abortable task</a> <br> ' \
+                      '<a href="/compute">Start task with result</a>'
 
 
 @app.route("/start")
+def simple():
+    simple_tasks.send()
+    return redirect("/", code=302)
+
+
+@app.route("/start_long")
 def start():
     message = long_task.send()
     print('Started long task', message.message_id, flush=True)
@@ -93,9 +105,10 @@ def start_with_result():
 
 @app.route("/result/<task_id>")
 def get_result(task_id):
+    # restore message
     message = compute_with_result.message().copy(message_id=task_id)
     try:
-
+        # try to get result
         res = message.get_result(block=False)
     except errors.ResultMissing:
         res = 'Not ready...'
