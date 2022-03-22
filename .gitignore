@@ -1,0 +1,5 @@
+*.pyc
+_tmp
+data/
+local_env.sh
+.idea/
